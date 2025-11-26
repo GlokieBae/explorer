@@ -395,25 +395,9 @@ const TopNavigation: React.FC<TopNavigationProps> = ({ onMenuClick }) => {
               </div>
 
               {/* Change Connection Button */}
-              <Button
-                onClick={() => setIsRPCModalOpen(true)}
-                variant="ghost"
-                size="sm"
-                title="Change RPC Connection"
-                className="text-sm focus:outline-none focus:ring-0 active:outline-none border-0 focus:border-0 active:border-0"
-                style={{
-                  color: colors.text.primary,
-                  outline: 'none',
-                  border: 'none',
-                  boxShadow: 'none',
-                }}
-              >
-                <FiRefreshCcw className="h-4 w-4" />
-                <span className="hidden md:inline ml-1">Change</span>
-              </Button>
 
               {/* Disconnect Button */}
-              {isConnected && (
+              {/* {isConnected && (
                 <Button
                   onClick={handleDisconnect}
                   variant="ghost"
@@ -429,7 +413,7 @@ const TopNavigation: React.FC<TopNavigationProps> = ({ onMenuClick }) => {
                 >
                   <FiLogOut className="h-4 w-4" />
                 </Button>
-              )}
+              )} */}
             </div>
 
             {/* Theme Toggle */}

@@ -39,7 +39,7 @@ export default function AccountDetail() {
     { tx: TxResponse; msgs: DecodeMsg[] }[]
   >([])
   const [loading, setLoading] = useState(true)
-  
+
   // Pagination state for IBC tokens
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
@@ -57,6 +57,10 @@ export default function AccountDetail() {
         })),
       ])
         .then(([accountData, balanceData, stakedData, txData]) => {
+          console.log(accountData, 'accountData')
+          console.log(balanceData, 'balanceData')
+          console.log(stakedData, 'stakedData')
+          console.log(txData, 'txData')
           setAccount(accountData)
           setBalances([...balanceData])
           setStakedBalance(stakedData)
@@ -101,10 +105,11 @@ export default function AccountDetail() {
     }
   }, [transactions])
 
-
-
   const formatBalance = (balance: Coin) => {
-    const { converted, base } = getConvertedAmount(balance.amount, balance.denom)
+    const { converted, base } = getConvertedAmount(
+      balance.amount,
+      balance.denom
+    )
 
     return {
       amount: balance.amount,
@@ -115,16 +120,20 @@ export default function AccountDetail() {
       baseDenom: base,
       formattedDenom: formatDenom(balance.denom),
       isIBC: balance.denom.startsWith('ibc/'),
-      isConverted: balance.denom.startsWith('u') || balance.denom.startsWith('a')
+      isConverted:
+        balance.denom.startsWith('u') || balance.denom.startsWith('a'),
     }
   }
 
   // Separate native and IBC tokens
-  const nativeTokens = balances.filter(balance => !balance.denom.includes('/'))
-  const ibcTokens = balances.filter(balance => balance.denom.includes('/'))
-  
+  const nativeTokens = balances.filter(
+    (balance) => !balance.denom.includes('/')
+  )
+  const ibcTokens = balances.filter((balance) => balance.denom.includes('/'))
+
   // Find native token in staked balance
-  const nativeStakedToken = stakedBalance && !stakedBalance.denom.includes('/') ? stakedBalance : null
+  const nativeStakedToken =
+    stakedBalance && !stakedBalance.denom.includes('/') ? stakedBalance : null
 
   // Pagination calculations for IBC tokens
   const totalPages = Math.ceil(ibcTokens.length / itemsPerPage)
@@ -352,10 +361,7 @@ export default function AccountDetail() {
           {(nativeTokens.length > 0 || nativeStakedToken) && (
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <FiUser
-                  className="w-5 h-5"
-                  style={{ color: colors.primary }}
-                />
+                <FiUser className="w-5 h-5" style={{ color: colors.primary }} />
                 <h3
                   className="text-lg font-medium"
                   style={{ color: colors.text.primary }}
@@ -409,13 +415,25 @@ export default function AccountDetail() {
                       {nativeTokens.length > 0 ? (
                         nativeTokens.map((balance, index) => {
                           const formatted = formatBalance(balance)
-                          const stakedForThisToken = nativeStakedToken && nativeStakedToken.denom === balance.denom ? nativeStakedToken : null
-                          const stakedFormatted = stakedForThisToken ? formatBalance(stakedForThisToken) : null
-                          const totalAmount = stakedForThisToken 
-                            ? (parseFloat(balance.amount) + parseFloat(stakedForThisToken.amount)).toString()
+                          const stakedForThisToken =
+                            nativeStakedToken &&
+                            nativeStakedToken.denom === balance.denom
+                              ? nativeStakedToken
+                              : null
+                          const stakedFormatted = stakedForThisToken
+                            ? formatBalance(stakedForThisToken)
+                            : null
+                          const totalAmount = stakedForThisToken
+                            ? (
+                                parseFloat(balance.amount) +
+                                parseFloat(stakedForThisToken.amount)
+                              ).toString()
                             : balance.amount
-                          const totalFormatted = formatBalance({ amount: totalAmount, denom: balance.denom })
-                          
+                          const totalFormatted = formatBalance({
+                            amount: totalAmount,
+                            denom: balance.denom,
+                          })
+
                           return (
                             <tr
                               key={index}
@@ -425,10 +443,12 @@ export default function AccountDetail() {
                                 backgroundColor: 'transparent',
                               }}
                               onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = colors.surface + '50'
+                                e.currentTarget.style.backgroundColor =
+                                  colors.surface + '50'
                               }}
                               onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = 'transparent'
+                                e.currentTarget.style.backgroundColor =
+                                  'transparent'
                               }}
                             >
                               <td className="py-3 px-4">
@@ -475,17 +495,21 @@ export default function AccountDetail() {
                                     className="font-semibold text-lg"
                                     style={{ color: colors.status.warning }}
                                   >
-                                    {stakedFormatted ? stakedFormatted.formattedAmount : '0'}
+                                    {stakedFormatted
+                                      ? stakedFormatted.formattedAmount
+                                      : '0'}
                                   </span>
-                                  {stakedFormatted && stakedFormatted.isConverted && (
-                                    <span
-                                      className="text-xs font-mono"
-                                      style={{ color: colors.text.tertiary }}
-                                      title={`Raw amount: ${stakedFormatted.amount}`}
-                                    >
-                                      Raw: {stakedFormatted.rawFormattedAmount}
-                                    </span>
-                                  )}
+                                  {stakedFormatted &&
+                                    stakedFormatted.isConverted && (
+                                      <span
+                                        className="text-xs font-mono"
+                                        style={{ color: colors.text.tertiary }}
+                                        title={`Raw amount: ${stakedFormatted.amount}`}
+                                      >
+                                        Raw:{' '}
+                                        {stakedFormatted.rawFormattedAmount}
+                                      </span>
+                                    )}
                                 </div>
                               </td>
                               <td className="py-3 px-4 text-right">
@@ -518,10 +542,12 @@ export default function AccountDetail() {
                             backgroundColor: 'transparent',
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = colors.surface + '50'
+                            e.currentTarget.style.backgroundColor =
+                              colors.surface + '50'
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'transparent'
+                            e.currentTarget.style.backgroundColor =
+                              'transparent'
                           }}
                         >
                           <td className="py-3 px-4">
@@ -530,7 +556,9 @@ export default function AccountDetail() {
                                 className="font-mono text-sm font-semibold"
                                 style={{ color: colors.text.primary }}
                               >
-                                {formatBalance(nativeStakedToken).baseDenom.toUpperCase()}
+                                {formatBalance(
+                                  nativeStakedToken
+                                ).baseDenom.toUpperCase()}
                               </span>
                               {formatBalance(nativeStakedToken).isConverted && (
                                 <span
@@ -557,7 +585,10 @@ export default function AccountDetail() {
                                 className="font-semibold text-lg"
                                 style={{ color: colors.status.warning }}
                               >
-                                {formatBalance(nativeStakedToken).formattedAmount}
+                                {
+                                  formatBalance(nativeStakedToken)
+                                    .formattedAmount
+                                }
                               </span>
                               {formatBalance(nativeStakedToken).isConverted && (
                                 <span
@@ -565,7 +596,11 @@ export default function AccountDetail() {
                                   style={{ color: colors.text.tertiary }}
                                   title={`Raw amount: ${nativeStakedToken.amount}`}
                                 >
-                                  Raw: {formatBalance(nativeStakedToken).rawFormattedAmount}
+                                  Raw:{' '}
+                                  {
+                                    formatBalance(nativeStakedToken)
+                                      .rawFormattedAmount
+                                  }
                                 </span>
                               )}
                             </div>
@@ -576,7 +611,10 @@ export default function AccountDetail() {
                                 className="font-bold text-lg"
                                 style={{ color: colors.text.primary }}
                               >
-                                {formatBalance(nativeStakedToken).formattedAmount}
+                                {
+                                  formatBalance(nativeStakedToken)
+                                    .formattedAmount
+                                }
                               </span>
                               {formatBalance(nativeStakedToken).isConverted && (
                                 <span
@@ -584,7 +622,11 @@ export default function AccountDetail() {
                                   style={{ color: colors.text.tertiary }}
                                   title={`Raw amount: ${nativeStakedToken.amount}`}
                                 >
-                                  Raw: {formatBalance(nativeStakedToken).rawFormattedAmount}
+                                  Raw:{' '}
+                                  {
+                                    formatBalance(nativeStakedToken)
+                                      .rawFormattedAmount
+                                  }
                                 </span>
                               )}
                             </div>
@@ -624,7 +666,9 @@ export default function AccountDetail() {
                     </span>
                     <select
                       value={itemsPerPage}
-                      onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
+                      onChange={(e) =>
+                        handleItemsPerPageChange(Number(e.target.value))
+                      }
                       className="px-2 py-1 rounded text-sm border"
                       style={{
                         backgroundColor: colors.surface,
@@ -682,7 +726,7 @@ export default function AccountDetail() {
                       </tr>
                     </thead>
                     <tbody>
-                    {paginatedIbcTokens.map((balance, index) => {
+                      {paginatedIbcTokens.map((balance, index) => {
                         const formatted = formatBalance(balance)
                         return (
                           <tr
@@ -693,10 +737,12 @@ export default function AccountDetail() {
                               backgroundColor: 'transparent',
                             }}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.backgroundColor = colors.surface + '50'
+                              e.currentTarget.style.backgroundColor =
+                                colors.surface + '50'
                             }}
                             onMouseLeave={(e) => {
-                              e.currentTarget.style.backgroundColor = 'transparent'
+                              e.currentTarget.style.backgroundColor =
+                                'transparent'
                             }}
                           >
                             <td className="py-3 px-4">
@@ -740,17 +786,25 @@ export default function AccountDetail() {
                     </tbody>
                   </table>
                 </div>
-                
+
                 {/* Pagination Controls */}
                 {totalPages > 1 && (
-                  <div className="flex items-center justify-between mt-4 pt-4" style={{ borderTop: `1px solid ${colors.border.secondary}` }}>
+                  <div
+                    className="flex items-center justify-between mt-4 pt-4"
+                    style={{
+                      borderTop: `1px solid ${colors.border.secondary}`,
+                    }}
+                  >
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handlePageChange(1)}
                         disabled={currentPage === 1}
                         className="p-2 rounded border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-opacity-80 transition-colors"
                         style={{
-                          backgroundColor: currentPage === 1 ? colors.surface : colors.background,
+                          backgroundColor:
+                            currentPage === 1
+                              ? colors.surface
+                              : colors.background,
                           borderColor: colors.border.secondary,
                           color: colors.text.primary,
                         }}
@@ -763,7 +817,10 @@ export default function AccountDetail() {
                         disabled={currentPage === 1}
                         className="p-2 rounded border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-opacity-80 transition-colors"
                         style={{
-                          backgroundColor: currentPage === 1 ? colors.surface : colors.background,
+                          backgroundColor:
+                            currentPage === 1
+                              ? colors.surface
+                              : colors.background,
                           borderColor: colors.border.secondary,
                           color: colors.text.primary,
                         }}
@@ -772,44 +829,59 @@ export default function AccountDetail() {
                         <FiChevronLeft className="w-4 h-4" />
                       </button>
                     </div>
-                    
+
                     <div className="flex items-center gap-1">
-                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                        let pageNum
-                        if (totalPages <= 5) {
-                          pageNum = i + 1
-                        } else if (currentPage <= 3) {
-                          pageNum = i + 1
-                        } else if (currentPage >= totalPages - 2) {
-                          pageNum = totalPages - 4 + i
-                        } else {
-                          pageNum = currentPage - 2 + i
+                      {Array.from(
+                        { length: Math.min(5, totalPages) },
+                        (_, i) => {
+                          let pageNum
+                          if (totalPages <= 5) {
+                            pageNum = i + 1
+                          } else if (currentPage <= 3) {
+                            pageNum = i + 1
+                          } else if (currentPage >= totalPages - 2) {
+                            pageNum = totalPages - 4 + i
+                          } else {
+                            pageNum = currentPage - 2 + i
+                          }
+
+                          return (
+                            <button
+                              key={pageNum}
+                              onClick={() => handlePageChange(pageNum)}
+                              className="px-3 py-1 rounded border text-sm hover:bg-opacity-80 transition-colors"
+                              style={{
+                                backgroundColor:
+                                  currentPage === pageNum
+                                    ? colors.primary
+                                    : colors.background,
+                                borderColor:
+                                  currentPage === pageNum
+                                    ? colors.primary
+                                    : colors.border.secondary,
+                                color:
+                                  currentPage === pageNum
+                                    ? colors.background
+                                    : colors.text.primary,
+                              }}
+                            >
+                              {pageNum}
+                            </button>
+                          )
                         }
-                        
-                        return (
-                          <button
-                            key={pageNum}
-                            onClick={() => handlePageChange(pageNum)}
-                            className="px-3 py-1 rounded border text-sm hover:bg-opacity-80 transition-colors"
-                            style={{
-                              backgroundColor: currentPage === pageNum ? colors.primary : colors.background,
-                              borderColor: currentPage === pageNum ? colors.primary : colors.border.secondary,
-                              color: currentPage === pageNum ? colors.background : colors.text.primary,
-                            }}
-                          >
-                            {pageNum}
-                          </button>
-                        )
-                      })}
+                      )}
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handlePageChange(currentPage + 1)}
                         disabled={currentPage === totalPages}
                         className="p-2 rounded border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-opacity-80 transition-colors"
                         style={{
-                          backgroundColor: currentPage === totalPages ? colors.surface : colors.background,
+                          backgroundColor:
+                            currentPage === totalPages
+                              ? colors.surface
+                              : colors.background,
                           borderColor: colors.border.secondary,
                           color: colors.text.primary,
                         }}
@@ -822,7 +894,10 @@ export default function AccountDetail() {
                         disabled={currentPage === totalPages}
                         className="p-2 rounded border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-opacity-80 transition-colors"
                         style={{
-                          backgroundColor: currentPage === totalPages ? colors.surface : colors.background,
+                          backgroundColor:
+                            currentPage === totalPages
+                              ? colors.surface
+                              : colors.background,
                           borderColor: colors.border.secondary,
                           color: colors.text.primary,
                         }}
@@ -838,29 +913,31 @@ export default function AccountDetail() {
           )}
 
           {/* Empty State */}
-          {nativeTokens.length === 0 && !nativeStakedToken && ibcTokens.length === 0 && (
-            <div
-              className="text-center py-12 rounded-lg"
-              style={{
-                backgroundColor: colors.background,
-                border: `1px solid ${colors.border.secondary}`,
-              }}
-            >
-              <FiDollarSign
-                className="w-16 h-16 mx-auto mb-4"
-                style={{ color: colors.text.tertiary }}
-              />
-              <h3
-                className="text-lg font-medium mb-2"
-                style={{ color: colors.text.secondary }}
+          {nativeTokens.length === 0 &&
+            !nativeStakedToken &&
+            ibcTokens.length === 0 && (
+              <div
+                className="text-center py-12 rounded-lg"
+                style={{
+                  backgroundColor: colors.background,
+                  border: `1px solid ${colors.border.secondary}`,
+                }}
               >
-                No Balances Found
-              </h3>
-              <p style={{ color: colors.text.tertiary }}>
-                This account has no available or staked tokens
-              </p>
-            </div>
-          )}
+                <FiDollarSign
+                  className="w-16 h-16 mx-auto mb-4"
+                  style={{ color: colors.text.tertiary }}
+                />
+                <h3
+                  className="text-lg font-medium mb-2"
+                  style={{ color: colors.text.secondary }}
+                >
+                  No Balances Found
+                </h3>
+                <p style={{ color: colors.text.tertiary }}>
+                  This account has no available or staked tokens
+                </p>
+              </div>
+            )}
         </div>
       </div>
 

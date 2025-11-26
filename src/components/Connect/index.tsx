@@ -25,25 +25,13 @@ import {
   setGovDepositParams,
   setGovTallyParams,
 } from '@/store/paramsSlice'
-import { LS_RPC_ADDRESS, LS_RPC_ADDRESS_LIST } from '@/utils/constant'
+import { DEFAULT_RPC_ADDRESS } from '@/utils/constant'
 import { validateConnection, connectWebsocketClient } from '@/rpc/client'
 import { subscribeNewBlock, subscribeTx } from '@/rpc/subscribe'
 import { removeTrailingSlash } from '@/utils/helper'
 import { RootState } from '@/store'
 
-const chainList = [
-  {
-    name: 'Cosmos Hub',
-    rpc: 'https://rpc.cosmos.nodestake.org',
-  },
-  {
-    name: 'Osmosis',
-    rpc: 'https://rpc-osmosis.ecostake.com',
-  },
-]
-
 export default function Connect() {
-  const [address, setAddress] = useState('')
   const [state, setState] = useState<'initial' | 'submitting' | 'success'>(
     'initial'
   )
@@ -61,12 +49,6 @@ export default function Connect() {
   const currentTmClient = useSelector(
     (state: RootState) => state.connect.tmClient
   )
-
-  const submitForm = async (e: FormEvent) => {
-    e.preventDefault()
-    const addr = removeTrailingSlash(address)
-    await connectClient(addr)
-  }
 
   const connectClient = async (rpcAddress: string) => {
     try {
@@ -143,12 +125,6 @@ export default function Connect() {
       dispatch(setSubsTxEvent(txSub))
 
       setState('success')
-
-      window.localStorage.setItem(LS_RPC_ADDRESS, rpcAddress)
-      window.localStorage.setItem(
-        LS_RPC_ADDRESS_LIST,
-        JSON.stringify([rpcAddress])
-      )
     } catch (err) {
       console.error(err)
       setError(true)
@@ -157,17 +133,11 @@ export default function Connect() {
     }
   }
 
-  const selectChain = (rpcAddress: string) => {
-    setAddress(rpcAddress)
-    connectClient(rpcAddress)
-  }
-
   React.useEffect(() => {
-    // Auto-reconnect if RPC address exists in localStorage
-    const savedRpcAddress = window.localStorage.getItem(LS_RPC_ADDRESS)
-    if (savedRpcAddress && state === 'initial') {
-      setAddress(savedRpcAddress)
-      connectClient(savedRpcAddress)
+    // 自动连接到默认RPC端点
+    const defaultRpc = removeTrailingSlash(DEFAULT_RPC_ADDRESS)
+    if (state === 'initial') {
+      connectClient(defaultRpc)
     }
   }, [])
 
@@ -182,72 +152,56 @@ export default function Connect() {
             className="text-4xl font-bold mb-4"
             style={{ color: colors.text.primary }}
           >
-            Connect to <span style={{ color: colors.primary }}>RPC</span>
+            Connecting to{' '}
+            <span style={{ color: colors.primary }}>Blockchain</span>
           </h1>
           <p className="mb-8" style={{ color: colors.text.secondary }}>
-            Connect to a Cosmos RPC endpoint to start exploring the blockchain.
+            Establishing connection to the blockchain explorer...
           </p>
         </div>
 
-        <form onSubmit={submitForm} className="space-y-4">
-          <div className="flex gap-2">
-            <input
-              type="url"
-              required
-              placeholder="https://rpc.cosmos.network:443"
-              value={address}
-              disabled={state !== 'initial'}
-              onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                setAddress(e.target.value)
-              }
-              className="flex-1 px-4 py-3.5 rounded-xl disabled:opacity-50 transition-all duration-300 connect-input shadow-md focus:shadow-lg focus:scale-[1.02]"
-              style={{
-                backgroundColor: colors.surface,
-                border: `2px solid ${colors.border.primary}`,
-                color: colors.text.primary,
-                boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)',
-                outline: 'none',
-              }}
-            />
-            <Button
-              type={state === 'success' ? 'button' : 'submit'}
-              disabled={state !== 'initial'}
-              variant={state === 'success' ? 'success' : 'primary'}
-              size="lg"
-              loading={state === 'submitting'}
-            >
-              {state === 'success' && <FiCheck />}
-              {state === 'initial' && 'Connect'}
-              {state === 'submitting' && 'Connecting...'}
-              {state === 'success' && 'Connected'}
-            </Button>
-          </div>
-          {error && (
-            <p className="text-sm mt-2" style={{ color: colors.status.error }}>
-              Failed to connect. Please check the RPC address.
-            </p>
+        <div className="flex flex-col items-center space-y-4">
+          {state === 'submitting' && (
+            <>
+              <FiLoader
+                className="h-12 w-12 animate-spin"
+                style={{ color: colors.primary }}
+              />
+              <p style={{ color: colors.text.secondary }}>Connecting...</p>
+            </>
           )}
-        </form>
-
-        <div className="text-center">
-          <p className="mb-4" style={{ color: colors.text.secondary }}>
-            Or select from popular chains:
-          </p>
-          <div className="flex flex-wrap justify-center gap-3">
-            {chainList.map((chain) => (
-              <Button
-                key={chain.name}
-                onClick={() => selectChain(chain.rpc)}
-                disabled={state !== 'initial'}
-                variant="secondary"
-                size="md"
-                title={chain.name}
+          {state === 'success' && (
+            <>
+              <FiCheck
+                className="h-12 w-12"
+                style={{ color: colors.status.success }}
+              />
+              <p style={{ color: colors.status.success }}>
+                Connected successfully!
+              </p>
+            </>
+          )}
+          {error && (
+            <>
+              <p
+                className="text-sm mt-2"
+                style={{ color: colors.status.error }}
               >
-                <FiZap style={{ color: colors.primary }} />
-                <span className="text-sm font-medium">{chain.name}</span>
+                Failed to connect. Please refresh the page to retry.
+              </p>
+              <Button
+                onClick={() => {
+                  setState('initial')
+                  setError(false)
+                  const defaultRpc = removeTrailingSlash(DEFAULT_RPC_ADDRESS)
+                  connectClient(defaultRpc)
+                }}
+                variant="primary"
+              >
+                Retry Connection
               </Button>
-            ))}
-          </div>
+            </>
+          )}
         </div>
       </div>
     </div>

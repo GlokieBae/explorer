@@ -5,7 +5,7 @@ export const GOV_PARAMS_TYPE = {
   DEPOSIT: 'deposit',
   TALLY: 'tallying',
 }
-
+export const DEFAULT_RPC_ADDRESS = 'https://dydx2.forcast.money'
 export type proposalStatus = {
   id: number
   status: string
