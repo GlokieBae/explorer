@@ -6,6 +6,8 @@ export const GOV_PARAMS_TYPE = {
   TALLY: 'tallying',
 }
 export const DEFAULT_RPC_ADDRESS = 'https://dydx2.forcast.money'
+export const DEFAULT_INDEXER_URL = 'https://dydx1.forcast.money'
+export const DEFAULT_METADATA_SERVICE_URL = 'https://66iv2m87ol.execute-api.ap-northeast-1.amazonaws.com/mainnet/metadata-service/v1'
 export type proposalStatus = {
   id: number
   status: string

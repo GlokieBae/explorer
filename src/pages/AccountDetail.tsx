@@ -26,6 +26,12 @@ import { decodeMsg, DecodeMsg } from '@/encoding'
 import { toast } from 'sonner'
 import { TxResponse } from '@cosmjs/tendermint-rpc'
 import { toHex } from '@cosmjs/encoding'
+import type { AssetPosition } from '@/rpc/indexer'
+import type { AssetInfo } from '@/rpc/metadata'
+import {
+  DEFAULT_INDEXER_URL,
+  DEFAULT_METADATA_SERVICE_URL,
+} from '@/utils/constant'
 
 export default function AccountDetail() {
   const { address } = useParams<{ address: string }>()
@@ -39,6 +45,21 @@ export default function AccountDetail() {
     { tx: TxResponse; msgs: DecodeMsg[] }[]
   >([])
   const [loading, setLoading] = useState(true)
+
+  // Subaccount assets state
+  const [subaccountAssets, setSubaccountAssets] = useState<
+    {
+      subaccountNumber: number
+      positions: AssetPosition[]
+    }[]
+  >([])
+  const [assetInfoMap, setAssetInfoMap] = useState<Map<string, AssetInfo>>(
+    new Map()
+  )
+  // Denom exponent map for precision conversion (from MetadataService)
+  const [denomExponentMap, setDenomExponentMap] = useState<Map<string, number>>(
+    new Map()
+  )
 
   // Pagination state for IBC tokens
   const [currentPage, setCurrentPage] = useState(1)
@@ -56,17 +77,78 @@ export default function AccountDetail() {
           totalCount: 0,
         })),
       ])
-        .then(([accountData, balanceData, stakedData, txData]) => {
-          console.log(accountData, 'accountData')
-          console.log(balanceData, 'balanceData')
-          console.log(stakedData, 'stakedData')
-          console.log(txData, 'txData')
+        .then(async ([accountData, balanceData, stakedData, txData]) => {
           setAccount(accountData)
           setBalances([...balanceData])
           setStakedBalance(stakedData)
           setTransactions(
             Array.isArray(txData) ? [...txData] : [...(txData.txs || [])]
           )
+
+          // 1. 查询子账户资产（使用 Indexer API）
+          try {
+            const { createIndexerClient } = await import('@/rpc/indexer')
+            const indexerClient = createIndexerClient(DEFAULT_INDEXER_URL)
+
+            const subaccountsResponse = await indexerClient.getSubaccounts(
+              address
+            )
+
+            const subaccountAssetsData =
+              await indexerClient.getAllSubaccountAssets(address)
+            setSubaccountAssets(subaccountAssetsData)
+
+            // 2. 收集所有资产符号（从子账户资产中）
+            const assetSymbols = new Set<string>()
+            subaccountAssetsData.forEach(({ positions }) => {
+              positions.forEach((pos) => {
+                if (pos.symbol) {
+                  assetSymbols.add(pos.symbol)
+                }
+              })
+            })
+
+            // 3. 查询资产元数据（使用 MetadataService API）
+            if (assetSymbols.size > 0) {
+              const { createMetadataClient } = await import('@/rpc/metadata')
+              const metadataClient = createMetadataClient(
+                DEFAULT_METADATA_SERVICE_URL
+              )
+              const assetInfo = await metadataClient.getAssetInfo(
+                Array.from(assetSymbols)
+              )
+              console.log('资产元数据:', assetInfo)
+
+              // 转换为 Map 并提取精度信息
+              const infoMap = new Map<string, AssetInfo>()
+              const exponentMap = new Map<string, number>()
+
+              Object.entries(assetInfo).forEach(([symbol, info]) => {
+                infoMap.set(symbol, info)
+
+                // 提取精度信息（优先级：atomicResolution > denomExponent > decimals）
+                const exponent =
+                  info.atomicResolution ?? info.denomExponent ?? info.decimals
+
+                if (exponent !== undefined && exponent > 0) {
+                  exponentMap.set(symbol, exponent)
+                  // 同时为 denom 设置精度（如果 symbol 和 denom 对应）
+                  // 这里可能需要根据实际情况调整映射关系
+                }
+              })
+
+              setAssetInfoMap(infoMap)
+              setDenomExponentMap(exponentMap)
+              console.log('精度映射:', Object.fromEntries(exponentMap))
+            }
+          } catch (error) {
+            console.error(
+              'Error fetching subaccount assets or metadata:',
+              error
+            )
+            // 不阻止页面加载，即使 Indexer 或 MetadataService 查询失败
+          }
+
           setLoading(false)
         })
         .catch((error) => {
@@ -106,9 +188,38 @@ export default function AccountDetail() {
   }, [transactions])
 
   const formatBalance = (balance: Coin) => {
+    // 尝试从 denomExponentMap 获取精度（通过 denom 或 symbol）
+    // 首先尝试直接匹配 denom
+    let exponent = denomExponentMap.get(balance.denom)
+
+    // 如果没找到，尝试通过 assetInfoMap 查找对应的 symbol
+    // 链上余额的 denom 可能对应 MetadataService 中的 symbol
+    if (exponent === undefined) {
+      for (const [symbol, info] of assetInfoMap.entries()) {
+        // 尝试匹配：denom 可能包含 symbol，或 symbol 可能包含 denom
+        const denomLower = balance.denom.toLowerCase()
+        const symbolLower = symbol.toLowerCase()
+
+        if (
+          denomLower === symbolLower ||
+          denomLower.includes(symbolLower) ||
+          symbolLower.includes(denomLower)
+        ) {
+          exponent =
+            info.atomicResolution ?? info.denomExponent ?? info.decimals
+          if (exponent !== undefined && exponent > 0) {
+            // 找到匹配后，也将其添加到 denomExponentMap 以便后续使用
+            denomExponentMap.set(balance.denom, exponent)
+            break
+          }
+        }
+      }
+    }
+
     const { converted, base } = getConvertedAmount(
       balance.amount,
-      balance.denom
+      balance.denom,
+      exponent
     )
 
     return {
@@ -121,7 +232,40 @@ export default function AccountDetail() {
       formattedDenom: formatDenom(balance.denom),
       isIBC: balance.denom.startsWith('ibc/'),
       isConverted:
-        balance.denom.startsWith('u') || balance.denom.startsWith('a'),
+        exponent !== undefined ||
+        balance.denom.startsWith('u') ||
+        balance.denom.startsWith('a'),
+      exponent: exponent,
+    }
+  }
+
+  // 格式化子账户资产
+  const formatSubaccountAsset = (position: AssetPosition) => {
+    const symbol = position.symbol
+    const assetInfo = assetInfoMap.get(symbol)
+    const size = position.size || '0'
+
+    // 获取精度（优先级：denomExponentMap > assetInfo）
+    let exponent = denomExponentMap.get(symbol)
+
+    if (exponent === undefined && assetInfo) {
+      exponent =
+        assetInfo.atomicResolution ??
+        assetInfo.denomExponent ??
+        assetInfo.decimals
+    }
+
+    // 转换金额
+    const { converted } = getConvertedAmount(size, symbol, exponent)
+
+    return {
+      symbol,
+      size,
+      convertedSize: converted,
+      formattedSize: formatAmount(converted),
+      side: position.side,
+      assetInfo,
+      exponent,
     }
   }
 
@@ -940,6 +1084,180 @@ export default function AccountDetail() {
             )}
         </div>
       </div>
+
+      {/* Subaccount Assets */}
+      {subaccountAssets.length > 0 && (
+        <div
+          className="rounded-xl p-6"
+          style={{
+            backgroundColor: colors.surface,
+            border: `1px solid ${colors.border.primary}`,
+            boxShadow: colors.shadow.sm,
+          }}
+        >
+          <h2
+            className="text-lg font-semibold mb-4"
+            style={{ color: colors.text.primary }}
+          >
+            Subaccount Assets
+          </h2>
+          <div
+            className="border-b mb-4"
+            style={{ borderColor: colors.border.secondary }}
+          ></div>
+
+          <div className="space-y-4">
+            {subaccountAssets.map(({ subaccountNumber, positions }) => {
+              if (positions.length === 0) return null
+
+              return (
+                <div key={subaccountNumber} className="space-y-2">
+                  <h3
+                    className="text-md font-medium"
+                    style={{ color: colors.text.secondary }}
+                  >
+                    Subaccount {subaccountNumber}
+                    {subaccountNumber === 0 && ' (Main Account)'}
+                  </h3>
+                  <div
+                    className="rounded-lg overflow-hidden"
+                    style={{
+                      backgroundColor: colors.background,
+                      border: `1px solid ${colors.border.secondary}`,
+                    }}
+                  >
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead
+                          style={{
+                            backgroundColor: colors.surface,
+                            borderBottom: `1px solid ${colors.border.secondary}`,
+                          }}
+                        >
+                          <tr>
+                            <th
+                              className="text-left py-3 px-4 font-medium text-sm"
+                              style={{ color: colors.text.secondary }}
+                            >
+                              Asset
+                            </th>
+                            <th
+                              className="text-left py-3 px-4 font-medium text-sm"
+                              style={{ color: colors.text.secondary }}
+                            >
+                              Side
+                            </th>
+                            <th
+                              className="text-right py-3 px-4 font-medium text-sm"
+                              style={{ color: colors.text.secondary }}
+                            >
+                              Size
+                            </th>
+                            <th
+                              className="text-right py-3 px-4 font-medium text-sm"
+                              style={{ color: colors.text.secondary }}
+                            >
+                              Raw Size
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {positions.map((position, index) => {
+                            const formatted = formatSubaccountAsset(position)
+                            return (
+                              <tr
+                                key={index}
+                                className="border-b hover:bg-opacity-50 transition-colors"
+                                style={{
+                                  borderColor: colors.border.secondary,
+                                  backgroundColor: 'transparent',
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.backgroundColor =
+                                    colors.surface + '50'
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.backgroundColor =
+                                    'transparent'
+                                }}
+                              >
+                                <td className="py-3 px-4">
+                                  <div className="flex flex-col">
+                                    <span
+                                      className="font-semibold"
+                                      style={{ color: colors.text.primary }}
+                                    >
+                                      {formatted.symbol}
+                                    </span>
+                                    {formatted.assetInfo?.name && (
+                                      <span
+                                        className="text-xs"
+                                        style={{ color: colors.text.tertiary }}
+                                      >
+                                        {formatted.assetInfo.name}
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="py-3 px-4">
+                                  <span
+                                    className="px-2 py-1 rounded text-xs font-medium"
+                                    style={{
+                                      backgroundColor:
+                                        formatted.side === 'LONG'
+                                          ? colors.status.success + '20'
+                                          : colors.status.error + '20',
+                                      color:
+                                        formatted.side === 'LONG'
+                                          ? colors.status.success
+                                          : colors.status.error,
+                                    }}
+                                  >
+                                    {formatted.side}
+                                  </span>
+                                </td>
+                                <td
+                                  className="py-3 px-4 text-right font-semibold"
+                                  style={{ color: colors.text.primary }}
+                                >
+                                  {formatted.formattedSize}
+                                </td>
+                                <td
+                                  className="py-3 px-4 text-right font-mono text-sm"
+                                  style={{ color: colors.text.secondary }}
+                                  title={formatted.size}
+                                >
+                                  {formatted.size.length > 12
+                                    ? formatted.size.slice(0, 12) + '...'
+                                    : formatted.size}
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {subaccountAssets.every(
+            ({ positions }) => positions.length === 0
+          ) && (
+            <div className="text-center py-8">
+              <FiDollarSign
+                className="w-12 h-12 mx-auto mb-4"
+                style={{ color: colors.text.tertiary }}
+              />
+              <p style={{ color: colors.text.secondary }}>
+                No subaccount assets found
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Transactions */}
       <div
