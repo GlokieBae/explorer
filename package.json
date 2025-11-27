@@ -16,6 +16,7 @@
     "@cosmjs/socket": "^0.34.0",
     "@cosmjs/stargate": "^0.34.0",
     "@cosmjs/tendermint-rpc": "^0.34.0",
+    "@dydxprotocol/v4-proto": "^9.4.0",
     "@reduxjs/toolkit": "^2.8.2",
     "@tanstack/react-table": "^8.21.3",
     "bech32": "^2.0.0",
@@ -55,5 +56,6 @@
     "typescript-eslint": "^8.30.1",
     "vite": "^6.3.5",
     "vite-tsconfig-paths": "^5.1.4"
-  }
+  },
+  "packageManager": "pnpm@10.18.2+sha512.9fb969fa749b3ade6035e0f109f0b8a60b5d08a1a87fdf72e337da90dcc93336e2280ca4e44f2358a649b83c17959e9993e777c2080879f3801e6f0d999ad3dd"
 }

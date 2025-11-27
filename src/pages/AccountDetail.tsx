@@ -28,6 +28,7 @@ import { TxResponse } from '@cosmjs/tendermint-rpc'
 import { toHex } from '@cosmjs/encoding'
 import type { AssetPosition } from '@/rpc/indexer'
 import { DEFAULT_INDEXER_URL } from '@/utils/constant'
+import { queryAllAssets } from '@/rpc/assets'
 
 export default function AccountDetail() {
   const { address } = useParams<{ address: string }>()
@@ -49,6 +50,9 @@ export default function AccountDetail() {
       positions: AssetPosition[]
     }[]
   >([])
+  const [assetPrecisionMap, setAssetPrecisionMap] = useState<
+    Map<string, number>
+  >(new Map())
   // Pagination state for IBC tokens
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
@@ -81,12 +85,33 @@ export default function AccountDetail() {
             const subaccountAssetsData =
               await indexerClient.getAllSubaccountAssets(address)
             setSubaccountAssets(subaccountAssetsData)
+
+            if (tmClient) {
+              const assets = await queryAllAssets(tmClient)
+              console.log('All assets:', assets)
+              const precisionMap = new Map<string, number>()
+
+              assets.forEach((asset) => {
+                const exponent =
+                  asset.denomExponent ?? asset.atomicResolution ?? 0
+
+                if (exponent > 0) {
+                  if (asset.symbol) {
+                    precisionMap.set(asset.symbol.toLowerCase(), exponent)
+                  }
+                  if (asset.denom) {
+                    precisionMap.set(asset.denom.toLowerCase(), exponent)
+                  }
+                }
+              })
+
+              setAssetPrecisionMap(precisionMap)
+            }
           } catch (error) {
             console.error(
               'Error fetching subaccount assets or metadata:',
               error
             )
-            // 不阻止页面加载，即使 Indexer 或 MetadataService 查询失败
           }
 
           setLoading(false)
@@ -127,10 +152,17 @@ export default function AccountDetail() {
     }
   }, [transactions])
 
+  const getPrecision = (key?: string) => {
+    if (!key) return undefined
+    return assetPrecisionMap.get(key.toLowerCase())
+  }
+
   const formatBalance = (balance: Coin) => {
+    const exponent = getPrecision(balance.denom)
     const { converted, base } = getConvertedAmount(
       balance.amount,
-      balance.denom
+      balance.denom,
+      exponent
     )
 
     return {
@@ -143,8 +175,10 @@ export default function AccountDetail() {
       formattedDenom: formatDenom(balance.denom),
       isIBC: balance.denom.startsWith('ibc/'),
       isConverted:
-        balance.denom.startsWith('u') || balance.denom.startsWith('a'),
-      exponent: undefined,
+        exponent !== undefined ||
+        balance.denom.startsWith('u') ||
+        balance.denom.startsWith('a'),
+      exponent,
     }
   }
 
@@ -152,7 +186,8 @@ export default function AccountDetail() {
   const formatSubaccountAsset = (position: AssetPosition) => {
     const symbol = position.symbol
     const size = position.size || '0'
-    const { converted } = getConvertedAmount(size, symbol)
+    const exponent = getPrecision(symbol)
+    const { converted } = getConvertedAmount(size, symbol, exponent)
 
     return {
       symbol,
@@ -160,6 +195,7 @@ export default function AccountDetail() {
       convertedSize: converted,
       formattedSize: formatAmount(converted),
       side: position.side,
+      exponent,
     }
   }
 

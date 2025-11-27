@@ -43,22 +43,35 @@ export const getBaseDenom = (denom: string): string => {
  * @param denom - The denomination string
  * @returns Object with converted amount and base denomination
  */
-export const getConvertedAmount = (amount: string, denom: string): { converted: string; base: string } => {
+export const getConvertedAmount = (
+  amount: string,
+  denom: string,
+  exponent?: number
+): { converted: string; base: string } => {
+  if (typeof exponent === 'number' && exponent > 0) {
+    const divisor = Math.pow(10, exponent)
+    const num = parseFloat(amount)
+    const decimals = Math.min(exponent, 18)
+    return {
+      converted: (num / divisor).toFixed(decimals),
+      base: denom,
+    }
+  }
   if (denom.startsWith('u')) {
     return {
       converted: convertFromMicroUnits(amount),
-      base: getBaseDenom(denom)
+      base: getBaseDenom(denom),
     }
   }
   if (denom.startsWith('a')) {
     return {
       converted: convertFromAttoUnits(amount),
-      base: getBaseDenom(denom)
+      base: getBaseDenom(denom),
     }
   }
   return {
     converted: amount,
-    base: denom
+    base: denom,
   }
 }
 
