@@ -16,6 +16,12 @@ import {
 import { decodeMsg, DecodeMsg } from '@/encoding'
 import { toast } from 'sonner'
 import CodeBlock from '@/components/CodeBlock'
+import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc'
+import advancedFormat from 'dayjs/plugin/advancedFormat'
+
+dayjs.extend(utc)
+dayjs.extend(advancedFormat)
 
 export default function TransactionDetail() {
   const { hash } = useParams<{ hash: string }>()
@@ -26,6 +32,10 @@ export default function TransactionDetail() {
   const [block, setBlock] = useState<Block | null>(null)
   const [msgs, setMsgs] = useState<DecodeMsg[]>([])
   const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    console.log('txData', tx)
+  }, [tx])
 
   useEffect(() => {
     if (tmClient && hash) {
@@ -227,6 +237,23 @@ export default function TransactionDetail() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <tbody>
+              {/* 链名称 */}
+              <tr
+                className="border-b"
+                style={{ borderColor: colors.border.secondary }}
+              >
+                <td
+                  className="py-3 px-0 font-medium"
+                  style={{ color: colors.text.secondary, width: '180px' }}
+                >
+                  Chain
+                </td>
+                <td className="py-3" style={{ color: colors.text.primary }}>
+                  {/* {block?.header.chainId?.split('-')[0].toUpperCase() || 'N/A'} */}
+                  H2
+                </td>
+              </tr>
+              {/* 链ID */}
               <tr
                 className="border-b"
                 style={{ borderColor: colors.border.secondary }}
@@ -241,6 +268,7 @@ export default function TransactionDetail() {
                   {block?.header.chainId || 'N/A'}
                 </td>
               </tr>
+              {/* 哈希 */}
               <tr
                 className="border-b"
                 style={{ borderColor: colors.border.secondary }}
@@ -258,6 +286,7 @@ export default function TransactionDetail() {
                   {hash.toUpperCase()}
                 </td>
               </tr>
+              {/* 区块高度 */}
               <tr
                 className="border-b"
                 style={{ borderColor: colors.border.secondary }}
@@ -278,6 +307,7 @@ export default function TransactionDetail() {
                   </Link>
                 </td>
               </tr>
+              {/* 交易状态 */}
               <tr
                 className="border-b"
                 style={{ borderColor: colors.border.secondary }}
@@ -326,6 +356,7 @@ export default function TransactionDetail() {
                   </div>
                 </td>
               </tr>
+              {/* 时间 */}
               <tr
                 className="border-b"
                 style={{ borderColor: colors.border.secondary }}
@@ -333,17 +364,59 @@ export default function TransactionDetail() {
                 <td
                   className="py-3 px-0 font-medium"
                   style={{ color: colors.text.secondary }}
+                  valign="top"
                 >
-                  Time
+                  Local Time
                 </td>
                 <td className="py-3" style={{ color: colors.text.primary }}>
-                  {block?.header.time
-                    ? `${timeFromNow(block.header.time)} (${displayDate(
-                        block.header.time
-                      )})`
-                    : 'N/A'}
+                  {block?.header.time ? (
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm">
+                          {block.header.time} (
+                          {dayjs(block.header.time).format(
+                            'MMM Do YYYY, HH:mm:ss'
+                          )}
+                          )
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    'N/A'
+                  )}
                 </td>
               </tr>
+              {/* UTC 时间 */}
+              <tr
+                className="border-b"
+                style={{ borderColor: colors.border.secondary }}
+              >
+                <td
+                  className="py-3 px-0 font-medium"
+                  style={{ color: colors.text.secondary }}
+                  valign="top"
+                >
+                  UTC Time
+                </td>
+                <td className="py-3" style={{ color: colors.text.primary }}>
+                  {block?.header.time ? (
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm">
+                          UTC (
+                          {dayjs(block.header.time)
+                            .utc()
+                            .format('MMM Do YYYY, HH:mm:ssZ')}
+                          )
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    'N/A'
+                  )}
+                </td>
+              </tr>
+              {/* 手续费 */}
               <tr
                 className="border-b"
                 style={{ borderColor: colors.border.secondary }}
@@ -358,15 +431,17 @@ export default function TransactionDetail() {
                   {getFee(txData?.authInfo?.fee?.amount)}
                 </td>
               </tr>
+              {/* GAS 费用 */}
               <tr>
                 <td
                   className="py-3 px-0 font-medium"
                   style={{ color: colors.text.secondary }}
                 >
-                  Gas Used
+                  Gas Used / Wanted
                 </td>
                 <td className="py-3" style={{ color: colors.text.primary }}>
-                  {tx.gasUsed?.toLocaleString() || 'N/A'}
+                  {tx.gasUsed?.toLocaleString() || '0'} /{' '}
+                  {tx.gasWanted?.toLocaleString() || '0'}
                 </td>
               </tr>
             </tbody>
