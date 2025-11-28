@@ -48,10 +48,11 @@ export const getConvertedAmount = (
   denom: string,
   exponent?: number
 ): { converted: string; base: string } => {
-  if (typeof exponent === 'number' && exponent > 0) {
-    const divisor = Math.pow(10, exponent)
+  if (typeof exponent === 'number' && exponent !== 0) {
+    const precision = Math.abs(exponent)
+    const divisor = Math.pow(10, precision)
     const num = parseFloat(amount)
-    const decimals = Math.min(exponent, 18)
+    const decimals = Math.min(precision, 18)
     return {
       converted: (num / divisor).toFixed(decimals),
       base: denom,
@@ -85,7 +86,9 @@ export const formatAmount = (amount: string) => {
   if (num >= 1e9) return (num / 1e9).toFixed(2) + 'B'
   if (num >= 1e6) return (num / 1e6).toFixed(2) + 'M'
   if (num >= 1e3) return (num / 1e3).toFixed(2) + 'K'
-  return parseFloat(amount).toLocaleString(undefined, { maximumFractionDigits: 6 })
+  return parseFloat(amount).toLocaleString(undefined, {
+    maximumFractionDigits: 6,
+  })
 }
 
 /**
@@ -113,9 +116,17 @@ export const getSendersFromEvents = (events: any[]): string[] => {
   const senders: string[] = []
 
   events.forEach((event) => {
-    if (event?.type === 'message' && event?.attributes && Array.isArray(event.attributes)) {
+    if (
+      event?.type === 'message' &&
+      event?.attributes &&
+      Array.isArray(event.attributes)
+    ) {
       event.attributes.forEach((attr: { key: string; value: string }) => {
-        if (attr?.key === 'sender' && attr?.value && typeof attr.value === 'string') {
+        if (
+          attr?.key === 'sender' &&
+          attr?.value &&
+          typeof attr.value === 'string'
+        ) {
           senders.push(attr.value)
         }
       })

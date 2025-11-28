@@ -88,14 +88,13 @@ export default function AccountDetail() {
 
             if (tmClient) {
               const assets = await queryAllAssets(tmClient)
-              console.log('All assets:', assets)
               const precisionMap = new Map<string, number>()
 
               assets.forEach((asset) => {
                 const exponent =
                   asset.denomExponent ?? asset.atomicResolution ?? 0
 
-                if (exponent > 0) {
+                if (exponent !== 0) {
                   if (asset.symbol) {
                     precisionMap.set(asset.symbol.toLowerCase(), exponent)
                   }
@@ -154,7 +153,8 @@ export default function AccountDetail() {
 
   const getPrecision = (key?: string) => {
     if (!key) return undefined
-    return assetPrecisionMap.get(key.toLowerCase())
+    const precision = assetPrecisionMap.get(key.toLowerCase())
+    return precision !== undefined && precision !== 0 ? precision : undefined
   }
 
   const formatBalance = (balance: Coin) => {
