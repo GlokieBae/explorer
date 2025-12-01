@@ -473,66 +473,6 @@ export default function TransactionDetail() {
         </div>
       </div>
 
-      {/* Tabs Navigation */}
-      <div
-        className="flex gap-8 border-b"
-        style={{ borderColor: colors.border.secondary }}
-      >
-        <button
-          className={`pb-3 px-1 text-sm font-medium transition-colors relative ${
-            activeTab === 'messages' ? 'text-blue-500' : ''
-          }`}
-          style={{
-            color:
-              activeTab === 'messages' ? colors.primary : colors.text.secondary,
-          }}
-          onClick={() => setActiveTab('messages')}
-        >
-          Messages ({msgs.length})
-          {activeTab === 'messages' && (
-            <div
-              className="absolute bottom-0 left-0 right-0 h-0.5"
-              style={{ backgroundColor: colors.primary }}
-            />
-          )}
-        </button>
-        <button
-          className={`pb-3 px-1 text-sm font-medium transition-colors relative ${
-            activeTab === 'events' ? 'text-blue-500' : ''
-          }`}
-          style={{
-            color:
-              activeTab === 'events' ? colors.primary : colors.text.secondary,
-          }}
-          onClick={() => setActiveTab('events')}
-        >
-          Event Logs
-          {activeTab === 'events' && (
-            <div
-              className="absolute bottom-0 left-0 right-0 h-0.5"
-              style={{ backgroundColor: colors.primary }}
-            />
-          )}
-        </button>
-        <button
-          className={`pb-3 px-1 text-sm font-medium transition-colors relative ${
-            activeTab === 'raw' ? 'text-blue-500' : ''
-          }`}
-          style={{
-            color: activeTab === 'raw' ? colors.primary : colors.text.secondary,
-          }}
-          onClick={() => setActiveTab('raw')}
-        >
-          Raw Json
-          {activeTab === 'raw' && (
-            <div
-              className="absolute bottom-0 left-0 right-0 h-0.5"
-              style={{ backgroundColor: colors.primary }}
-            />
-          )}
-        </button>
-      </div>
-
       {/* Tab Content */}
       <div
         className="rounded-xl p-6"
@@ -542,21 +482,52 @@ export default function TransactionDetail() {
           boxShadow: colors.shadow.sm,
         }}
       >
+        {/* Content Area Title Tabs */}
+        <div
+          className="flex items-center gap-6 border-b mb-6"
+          style={{ borderColor: colors.border.secondary }}
+        >
+          <button
+            onClick={() => setActiveTab('messages')}
+            className="text-lg font-semibold transition-colors pb-3 border-b-2 -mb-[1px]"
+            style={{
+              color:
+                activeTab === 'messages'
+                  ? colors.primary
+                  : colors.text.secondary,
+              borderColor:
+                activeTab === 'messages' ? colors.primary : 'transparent',
+            }}
+          >
+            Messages ({msgs.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('events')}
+            className="text-lg font-semibold transition-colors pb-3 border-b-2 -mb-[1px]"
+            style={{
+              color:
+                activeTab === 'events' ? colors.primary : colors.text.secondary,
+              borderColor:
+                activeTab === 'events' ? colors.primary : 'transparent',
+            }}
+          >
+            Event Logs
+          </button>
+          <button
+            onClick={() => setActiveTab('raw')}
+            className="text-lg font-semibold transition-colors pb-3 border-b-2 -mb-[1px]"
+            style={{
+              color:
+                activeTab === 'raw' ? colors.primary : colors.text.secondary,
+              borderColor: activeTab === 'raw' ? colors.primary : 'transparent',
+            }}
+          >
+            Raw Json
+          </button>
+        </div>
+
         {activeTab === 'messages' && (
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2
-                className="text-lg font-semibold"
-                style={{ color: colors.text.primary }}
-              >
-                Messages
-              </h2>
-            </div>
-            <div
-              className="border-b mb-4"
-              style={{ borderColor: colors.border.secondary }}
-            ></div>
-
             <div className="space-y-4">
               {msgs.map((msg, index) => (
                 <div
@@ -613,18 +584,6 @@ export default function TransactionDetail() {
 
         {activeTab === 'events' && (
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2
-                className="text-lg font-semibold"
-                style={{ color: colors.text.primary }}
-              >
-                Event Logs
-              </h2>
-            </div>
-            <div
-              className="border-b mb-4"
-              style={{ borderColor: colors.border.secondary }}
-            ></div>
             <div
               className="p-4 rounded-lg overflow-auto"
               style={{ backgroundColor: colors.background }}
@@ -648,18 +607,6 @@ export default function TransactionDetail() {
 
         {activeTab === 'raw' && (
           <div className="relative">
-            <div className="flex items-center justify-between mb-4">
-              <h2
-                className="text-lg font-semibold"
-                style={{ color: colors.text.primary }}
-              >
-                Raw JSON
-              </h2>
-            </div>
-            <div
-              className="border-b mb-4"
-              style={{ borderColor: colors.border.secondary }}
-            ></div>
             <div
               className="p-4 rounded-lg overflow-auto"
               style={{ backgroundColor: colors.background }}
