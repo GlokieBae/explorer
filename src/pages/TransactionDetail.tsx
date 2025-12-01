@@ -1,7 +1,14 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useSelector } from 'react-redux'
-import { FiChevronRight, FiHome, FiHash, FiCheck, FiX } from 'react-icons/fi'
+import {
+  FiChevronRight,
+  FiHome,
+  FiHash,
+  FiCheck,
+  FiX,
+  FiCopy,
+} from 'react-icons/fi'
 import { useTheme } from '@/theme/ThemeProvider'
 import { getTx, getBlock } from '@/rpc/query'
 import { selectTmClient } from '@/store/connectSlice'
@@ -15,6 +22,7 @@ import {
 } from '@/utils/helper'
 import { decodeMsg, DecodeMsg } from '@/encoding'
 import { toast } from 'sonner'
+import ReactJson from 'react-json-view'
 import CodeBlock from '@/components/CodeBlock'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
@@ -25,13 +33,15 @@ dayjs.extend(advancedFormat)
 
 export default function TransactionDetail() {
   const { hash } = useParams<{ hash: string }>()
-  const { colors } = useTheme()
+  const { colors, colorScheme } = useTheme()
   const tmClient = useSelector(selectTmClient)
   const [tx, setTx] = useState<IndexedTx | null>(null)
   const [txData, setTxData] = useState<Tx | null>(null)
   const [block, setBlock] = useState<Block | null>(null)
   const [msgs, setMsgs] = useState<DecodeMsg[]>([])
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('messages')
+  const [jsonCopied, setJsonCopied] = useState(false)
 
   useEffect(() => {
     console.log('txData', tx)
@@ -125,6 +135,20 @@ export default function TransactionDetail() {
       }
     }
     return ''
+  }
+
+  const handleCopyJson = () => {
+    if (tx) {
+      const jsonString = JSON.stringify(
+        tx,
+        (key, value) => (typeof value === 'bigint' ? value.toString() : value),
+        2
+      )
+      navigator.clipboard.writeText(jsonString)
+      setJsonCopied(true)
+      setTimeout(() => setJsonCopied(false), 2000)
+      toast.success('Copied to clipboard')
+    }
   }
 
   if (loading) {
@@ -449,72 +473,214 @@ export default function TransactionDetail() {
         </div>
       </div>
 
-      {/* Messages */}
-      {msgs.length > 0 && (
-        <div
-          className="rounded-xl p-6"
+      {/* Tabs Navigation */}
+      <div
+        className="flex gap-8 border-b"
+        style={{ borderColor: colors.border.secondary }}
+      >
+        <button
+          className={`pb-3 px-1 text-sm font-medium transition-colors relative ${
+            activeTab === 'messages' ? 'text-blue-500' : ''
+          }`}
           style={{
-            backgroundColor: colors.surface,
-            border: `1px solid ${colors.border.primary}`,
-            boxShadow: colors.shadow.sm,
+            color:
+              activeTab === 'messages' ? colors.primary : colors.text.secondary,
           }}
+          onClick={() => setActiveTab('messages')}
         >
-          <h2
-            className="text-lg font-semibold mb-4"
-            style={{ color: colors.text.primary }}
-          >
-            Messages ({msgs.length})
-          </h2>
-          <div
-            className="border-b mb-4"
-            style={{ borderColor: colors.border.secondary }}
-          ></div>
+          Messages ({msgs.length})
+          {activeTab === 'messages' && (
+            <div
+              className="absolute bottom-0 left-0 right-0 h-0.5"
+              style={{ backgroundColor: colors.primary }}
+            />
+          )}
+        </button>
+        <button
+          className={`pb-3 px-1 text-sm font-medium transition-colors relative ${
+            activeTab === 'events' ? 'text-blue-500' : ''
+          }`}
+          style={{
+            color:
+              activeTab === 'events' ? colors.primary : colors.text.secondary,
+          }}
+          onClick={() => setActiveTab('events')}
+        >
+          Event Logs
+          {activeTab === 'events' && (
+            <div
+              className="absolute bottom-0 left-0 right-0 h-0.5"
+              style={{ backgroundColor: colors.primary }}
+            />
+          )}
+        </button>
+        <button
+          className={`pb-3 px-1 text-sm font-medium transition-colors relative ${
+            activeTab === 'raw' ? 'text-blue-500' : ''
+          }`}
+          style={{
+            color: activeTab === 'raw' ? colors.primary : colors.text.secondary,
+          }}
+          onClick={() => setActiveTab('raw')}
+        >
+          Raw Json
+          {activeTab === 'raw' && (
+            <div
+              className="absolute bottom-0 left-0 right-0 h-0.5"
+              style={{ backgroundColor: colors.primary }}
+            />
+          )}
+        </button>
+      </div>
 
-          <div className="space-y-4">
-            {msgs.map((msg, index) => (
-              <div
-                key={index}
-                className="p-4 rounded-lg"
-                style={{
-                  backgroundColor: colors.background,
-                  border: `1px solid ${colors.border.secondary}`,
-                }}
+      {/* Tab Content */}
+      <div
+        className="rounded-xl p-6"
+        style={{
+          backgroundColor: colors.surface,
+          border: `1px solid ${colors.border.primary}`,
+          boxShadow: colors.shadow.sm,
+        }}
+      >
+        {activeTab === 'messages' && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2
+                className="text-lg font-semibold"
+                style={{ color: colors.text.primary }}
               >
-                <div className="flex items-center gap-2 mb-3">
-                  <span
-                    className="px-2 py-1 rounded text-xs font-medium"
-                    style={{
-                      backgroundColor: colors.status.info + '20',
-                      color: colors.status.info,
-                    }}
-                  >
-                    {getTypeMsg(msg.typeUrl)}
-                  </span>
-                </div>
+                Messages
+              </h2>
+            </div>
+            <div
+              className="border-b mb-4"
+              style={{ borderColor: colors.border.secondary }}
+            ></div>
 
-                <div className="space-y-2">
-                  {Object.entries(msg.data || {}).map(([key, value]) => (
-                    <div key={key} className="flex flex-col gap-1">
-                      <span
-                        className="text-sm font-medium"
-                        style={{ color: colors.text.secondary }}
-                      >
-                        {key}:
-                      </span>
-                      <div
-                        className="text-sm"
-                        style={{ color: colors.text.primary }}
-                      >
-                        {showMsgData(value)}
+            <div className="space-y-4">
+              {msgs.map((msg, index) => (
+                <div
+                  key={index}
+                  className="p-4 rounded-lg"
+                  style={{
+                    backgroundColor: colors.background,
+                    border: `1px solid ${colors.border.secondary}`,
+                  }}
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <span
+                      className="px-2 py-1 rounded text-xs font-medium"
+                      style={{
+                        backgroundColor: colors.status.info + '20',
+                        color: colors.status.info,
+                      }}
+                    >
+                      {getTypeMsg(msg.typeUrl)}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2">
+                    {Object.entries(msg.data || {}).map(([key, value]) => (
+                      <div key={key} className="flex flex-col gap-1">
+                        <span
+                          className="text-sm font-medium"
+                          style={{ color: colors.text.secondary }}
+                        >
+                          {key}:
+                        </span>
+                        <div
+                          className="text-sm"
+                          style={{ color: colors.text.primary }}
+                        >
+                          {showMsgData(value)}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+              {msgs.length === 0 && (
+                <div
+                  className="text-center py-8"
+                  style={{ color: colors.text.secondary }}
+                >
+                  No messages found
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {activeTab === 'events' && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2
+                className="text-lg font-semibold"
+                style={{ color: colors.text.primary }}
+              >
+                Event Logs
+              </h2>
+            </div>
+            <div
+              className="border-b mb-4"
+              style={{ borderColor: colors.border.secondary }}
+            ></div>
+            <div
+              className="p-4 rounded-lg overflow-auto"
+              style={{ backgroundColor: colors.background }}
+            >
+              <ReactJson
+                src={JSON.parse(
+                  JSON.stringify(tx?.events || [], (key, value) =>
+                    typeof value === 'bigint' ? value.toString() : value
+                  )
+                )}
+                theme={colorScheme === 'dark' ? 'ocean' : 'rjv-default'}
+                displayDataTypes={false}
+                displayObjectSize={true}
+                enableClipboard={true}
+                collapsed={2}
+                style={{ backgroundColor: 'transparent' }}
+              />
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'raw' && (
+          <div className="relative">
+            <div className="flex items-center justify-between mb-4">
+              <h2
+                className="text-lg font-semibold"
+                style={{ color: colors.text.primary }}
+              >
+                Raw JSON
+              </h2>
+            </div>
+            <div
+              className="border-b mb-4"
+              style={{ borderColor: colors.border.secondary }}
+            ></div>
+            <div
+              className="p-4 rounded-lg overflow-auto"
+              style={{ backgroundColor: colors.background }}
+            >
+              <ReactJson
+                src={JSON.parse(
+                  JSON.stringify(tx || {}, (key, value) =>
+                    typeof value === 'bigint' ? value.toString() : value
+                  )
+                )}
+                theme={colorScheme === 'dark' ? 'ocean' : 'rjv-default'}
+                displayDataTypes={false}
+                displayObjectSize={true}
+                enableClipboard={true}
+                collapsed={2}
+                style={{ backgroundColor: 'transparent' }}
+              />
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
